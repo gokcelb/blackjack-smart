@@ -1,4 +1,5 @@
 from hand import Hand
+import time
 
 
 class Dealer:
@@ -12,4 +13,5 @@ class Dealer:
         return self.deck.cards.pop(0)
 
     def act(self):
+        time.sleep(2)
         return "stay" if self.hand.score >= 17 else "hit"

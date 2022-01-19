@@ -1,3 +1,6 @@
+import time
+
+
 class Game:
     def __init__(self, deck, dealer, player):
         self.deck = deck
@@ -102,9 +105,11 @@ class Game:
         dealer_action = self.dealer.act()
         while dealer_action == "hit":
             print(f"The dealer hits and is dealt: {self.deal(self.dealer)}")
+            time.sleep(2)
             self.announce_hand(self.dealer)
             if self.check_for_busted(bet):
                 return "busted"
+            dealer_action = self.dealer.act()
 
         print("The dealer stays.")
 

@@ -4,10 +4,10 @@ class Hand:
         self.score = 0
 
     def calculate_score(self, deck):
+        self.score = 0
         aces = []
         for card in self.hand:
             value = deck.scores[card]
-            print(card, value)
             if type(value) is dict:
                 aces.append(value)
                 continue
@@ -16,8 +16,6 @@ class Hand:
         for ace in aces:
             value = ace["small"] if ace["big"] + self.score > 21 else ace["big"]
             self.score += value
-
-        print(self.score)
 
     def add(self, dealt_card):
         self.hand.append(dealt_card)
