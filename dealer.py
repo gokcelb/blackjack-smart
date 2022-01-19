@@ -1,8 +1,10 @@
+from hand import Hand
+
+
 class Dealer:
     def __init__(self, deck):
         self.deck = deck
-        self.hand = []
-        self.hand_value = 0
+        self.hand = Hand()
 
     def deal(self):
         if len(self.deck.cards) == 0:
@@ -10,4 +12,4 @@ class Dealer:
         return self.deck.cards.pop(0)
 
     def act(self):
-        return "stay" if self.hand_value >= 17 else "hit"
+        return "stay" if self.hand.score >= 17 else "hit"

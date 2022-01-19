@@ -1,5 +1,6 @@
 class Game:
-    def __init__(self, dealer, player):
+    def __init__(self, deck, dealer, player):
+        self.deck = deck
         self.dealer = dealer
         self.player = player
 
@@ -18,7 +19,8 @@ class Game:
                 bet = self.ask_bet()
                 self.opening(self.player)
                 self.opening(self.dealer)
-                self.check_for_blackjack(bet)
+                if self.check_for_blackjack(bet):
+                    break
                 if self.player_plays(bet) == "busted" or self.dealer_plays(bet) == "busted":
                     break
                 self.check_for_winner(bet)
@@ -29,66 +31,53 @@ class Game:
         print("You've ran out of money. Please restart this program to try again. Goodbye.")
 
     def opening(self, who):
-        first_two_cards = [self.dealer.deal(), self.dealer.deal()]
-        who.hand.extend(first_two_cards)
-        self.calculate_hand_value(who)
+        who.hand.add(self.dealer.deal())
+        who.hand.add(self.dealer.deal())
+        who.hand.calculate_score(self.deck)
         if who == self.player:
-            print(f"You are dealt: {', '.join(first_two_cards)}")
+            print(f"You are dealt: {', '.join(who.hand.hand)}")
         else:
-            print(f"The dealer is dealt: {first_two_cards[0]}, Unknown")
+            print(f"The dealer is dealt: {who.hand.hand[0]}, Unknown")
 
     def deal(self, who):
         try:
             dealt_card = self.dealer.deal()
-            who.hand.append(dealt_card)
-            self.calculate_hand_value(who)
+            who.hand.add(dealt_card)
+            who.hand.calculate_score(self.deck)
             return dealt_card
         except Exception as err:
             print(err)
 
-    def display_hand(self, who):
+    def announce_hand(self, who):
         if who == self.player:
-            print(f"You know have: {', '.join(who.hand)}")
+            print(f"You know have: {', '.join(who.hand.hand)}")
         else:
-            print(f"The dealer has: {', '.join(who.hand)}")
-
-    def calculate_hand_value(self, who):
-        total = 0
-        aces = []
-        for card in who.hand:
-            score = self.dealer.deck.scores[card]
-            if type(score) is dict:
-                aces.append(score)
-                continue
-            total += score
-
-        for ace in aces:
-            score = ace["small"] if ace["big"] + total > 21 else ace["big"]
-            total += score
-
-        who.hand_value = total
+            print(f"The dealer has: {', '.join(who.hand.hand)}")
 
     def check_for_blackjack(self, bet):
-        if self.player.hand_value == 21:
-            print(f"Blackjack! You win ${bet + bet / 2}." if self.dealer.hand_value !=
-                  21 else "You tie. Your bet has been returned.")
-            self.player.funds += bet + bet / 2
+        if self.player.hand.score == 21:
+            if self.dealer.hand.score != 21:
+                print(f"Blackjack! You win ${bet + bet / 2}.")
+                self.player.funds += bet + bet / 2
+            else:
+                print("You tie. Your bet has been returned.")
+            return True
 
     def check_for_busted(self, bet):
-        if self.dealer.hand_value > 21:
+        if self.dealer.hand.score > 21:
             print(f"The dealer busts, you win ${bet}")
             self.player.funds += bet
             return True
 
-        if self.player.hand_value > 21:
+        if self.player.hand.score > 21:
             print(f"Your hand value is over 21 and you lose ${bet}")
             self.player.funds -= bet
             return True
 
     def check_for_winner(self, bet):
-        if self.dealer.hand_value == self.player.hand_value:
+        if self.dealer.hand.score == self.player.hand.score:
             print("You tie. Your bet has been returned.")
-        elif self.dealer.hand_value > self.player.hand_value:
+        elif self.dealer.hand.score > self.player.hand.score:
             print(f"The dealer wins, you lose ${bet}.")
             self.player.funds -= bet
         else:
@@ -103,17 +92,17 @@ class Game:
 
         while player_action.lower() == "hit":
             self.deal(self.player)
-            self.display_hand(self.player)
+            self.announce_hand(self.player)
             if self.check_for_busted(bet):
                 return "busted"
             player_action = input("Would you like to hit or stay? ")
 
     def dealer_plays(self, bet):
-        self.display_hand(self.dealer)
+        self.announce_hand(self.dealer)
         dealer_action = self.dealer.act()
         while dealer_action == "hit":
             print(f"The dealer hits and is dealt: {self.deal(self.dealer)}")
-            self.display_hand(self.dealer)
+            self.announce_hand(self.dealer)
             if self.check_for_busted(bet):
                 return "busted"
 
@@ -127,10 +116,7 @@ class Game:
         return bet
 
     def reset(self):
-        self.dealer.deck.cards.extend(self.dealer.hand + self.player.hand)
+        self.dealer.deck.cards.extend(self.dealer.hand.hand + self.player.hand.hand)
         self.dealer.deck.shuffle()
-
-        self.dealer.hand = []
-        self.dealer.hand_value = 0
-        self.player.hand = []
-        self.player.hand_value = 0
+        self.dealer.hand.empty()
+        self.player.hand.empty()
