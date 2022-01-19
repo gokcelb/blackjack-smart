@@ -2,6 +2,7 @@ from deck import Deck
 from dealer import Dealer
 from player import Player
 from game import Game
+from card import Card
 
 
 if __name__ == "__main__":

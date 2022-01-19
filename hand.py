@@ -3,11 +3,11 @@ class Hand:
         self.hand = []
         self.score = 0
 
-    def calculate_score(self, deck):
+    def calculate_score(self):
         self.score = 0
         aces = []
         for card in self.hand:
-            value = deck.scores[card]
+            value = card.get_score()
             if type(value) is dict:
                 aces.append(value)
                 continue
