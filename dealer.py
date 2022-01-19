@@ -6,6 +6,8 @@ class Dealer:
     def __init__(self, deck):
         self.deck = deck
         self.hand = Hand()
+        self.name = "the dealer"
+        self.possessive = "the dealer's"
 
     def deal(self):
         if len(self.deck.cards) == 0:

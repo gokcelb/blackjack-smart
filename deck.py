@@ -6,6 +6,7 @@ class Deck:
     def __init__(self):
         self.cards = []
         self.init()
+        self.shuffle()
 
     def init(self):
         suits = [u"\u2666", u"\u2665", u"\u2663", u"\u2660"]
