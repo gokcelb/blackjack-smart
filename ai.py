@@ -9,7 +9,7 @@ class AI(Player):
         super().__init__()
         AI.instances += 1
         self.name = f"player{str(AI.instances)}"
-        self.possessive = f"player{str(AI.instances)}'s"
+        self.bet = 0
 
     def act(self, dealer_hand):
         has_ace = False
@@ -30,19 +30,17 @@ class AI(Player):
             return self.high_dealer_hand(hand_type)
 
     def low_dealer_hand(self, hand_type):
-        score = self.hand.score
         if hand_type == "hard":
-            return "hit" if 4 <= score <= 11 else "stay"
+            return "hit" if 4 <= self.hand.score <= 11 else "stay"
         else:
-            return "hit" if 13 <= score <= 18 else "stay"
+            return "hit" if 13 <= self.hand.score <= 18 else "stay"
 
     def high_dealer_hand(self, hand_type):
-        score = self.hand.score
         if hand_type == "hard":
-            return "hit" if 4 <= score <= 16 else "stay"
+            return "hit" if 4 <= self.hand.score <= 16 else "stay"
         else:
-            return "hit" if 13 <= score <= 18 else "stay"
+            return "hit" if 13 <= self.hand.score <= 18 else "stay"
 
-    def bet(self):
+    def make_bet(self):
         coefficients = [1, 1/2, 1/3, 1/4, 1/5, 2/3, 3/4, 2/5, 3/5, 4/5]
-        return self.funds * random.choice(coefficients)
+        self.bet = self.funds * random.choice(coefficients)
