@@ -3,6 +3,7 @@ from deck import Deck
 import suffix
 import wait
 
+
 class Game:
     def __init__(self, dealer, player, ai1, ai2):
         self.checker = Checker()
@@ -11,8 +12,9 @@ class Game:
         self.player = player
         self.ai1 = ai1
         self.ai2 = ai2
+        self.ais = []
         self.players = []
-        self.all = [self.dealer]
+        self.all = []
 
     def play(self):
         while self.player.funds > 0:
@@ -25,17 +27,13 @@ class Game:
             if game_starts.lower() == "no":
                 return
 
-            print(f"{self.ai1.name} has entered the game.")
-            print(f"{self.ai2.name} has entered the game.")
+            self.set_players()
 
             while True:
-                self.ai1.make_bet()
-                wait.one_second()
-                print(f"{self.ai1.name} has betted ${self.ai1.bet}")
-
-                self.ai2.make_bet()
-                wait.one_second()
-                print(f"{self.ai2.name} has betted ${self.ai2.bet}")
+                for ai in self.ais:
+                    ai.make_bet()
+                    wait.one_second()
+                    print(f"{ai.name} has betted ${ai.bet}")
 
                 wait.one_second()
                 self.player.bet = self.ask_bet()
@@ -56,6 +54,27 @@ class Game:
 
         print("You've ran out of money. Please restart this program to try again. Goodbye")
 
+    def set_players(self):
+        if self.ai1.funds > 0:
+            self.ais.append(self.ai1)
+            print(f"{self.ai1.name} has entered the game")
+
+        if self.ai2.funds > 0:
+            self.ais.append(self.ai2)
+            print(f"{self.ai2.name} has entered the game")
+
+        self.players.extend(self.ais)
+        self.players.append(self.player)
+        self.all.extend(self.players)
+        self.all.append(self.dealer)
+
+    def ask_bet(self):
+        bet = int(input("Place your bet: $"))
+        while bet > self.player.funds:
+            print("You do not have sufficient funds")
+            bet = int(input("Place your bet: $"))
+        return bet
+
     def opening(self):
         for who in self.all:
             self.deal(who)
@@ -75,81 +94,12 @@ class Game:
         who.hand.add(dealt_card)
         return dealt_card
 
-    def announce_hand(self, who):
-        print(f"{who.name}: {', '.join([str(card_obj) for card_obj in who.hand.hand])}")
-
-    def round_ends_with_blackjack(self):
-        naturals = self.checker.gets_natural(self.players)
-        if len(naturals) == 0:
-            return False
-
-        for player in self.players:
-            player_suffix = suffix.determine(player.name)
-            if player in naturals and self.dealer.hand.score != 21:
-                print(f"Blackjack! {player.name} win{player_suffix} ${player.bet + player.bet / 2}")
-                player.funds += player.bet / 2
-            elif player in naturals and self.dealer.hand.score == 21:
-                print(f"It's a tie. The bet has been returned to {player.name}")
-
-        if len(naturals) == 3:
-            return True
-
-        non_naturals = []
-        for player in self.players:
-            if player not in naturals:
-                non_naturals.append(player)
-        self.checker.round_ends(non_naturals, self.dealer)
-        self.announce_hand(self.dealer)
-        self.announce_final_results()
-        return True
-        
-    def round_ends_with_bust(self, who):
-        busted = self.checker.busts(who)
-        if busted is None:
-            return False
-        
-        busted_suffix = suffix.determine(busted.name)
-
-        if busted == self.dealer:
-            print("The dealer busts, you all win")
-            for player in self.players:
-                player_suffix = suffix.determine(player.name)
-                print(f"{player.name} win{player_suffix} ${player.bet}.")
-                player.funds += player.bet
-        else:
-            print(f"{busted.possessive} hand value is over 21 and {busted.name} lose{busted_suffix} ${busted.bet}")
-            busted.funds -= busted.bet
-            for player in self.players:
-                if player == busted:
-                    continue
-                print(f"{player.possessive} bet (${player.bet}) has been returned")
-
-        return True
-
-    def round_ends(self):
-        self.checker.round_ends(self.players, self.dealer)
-        self.announce_final_results()
-
-    def announce_final_results(self):
-        for winner in self.checker.winners:
-            winner_suffix = suffix.determine(winner.name)
-            print(f"{winner.name} win{winner_suffix} ${winner.bet}")
-            winner.funds += winner.bet
-        for tied in self.checker.ties:
-            tied_suffix = suffix.determine(tied.name)
-            print(f"{tied.name} tie{tied_suffix}. {tied.possessive} bet (${tied.bet}) has been returned")
-        for loser in self.checker.losers:
-            loser_suffix = suffix.determine(loser.name)
-            print(f"The dealer wins, {loser.name} lose{loser_suffix} ${loser.bet}.")
-            loser.funds -= loser.bet
-
     def ais_play(self):
-        ais = [self.ai1, self.ai2]
         visible_dealer_hand_score = self.dealer.hand.hand[0].get_score()
         if type(visible_dealer_hand_score) is dict:
             visible_dealer_hand_score = visible_dealer_hand_score["big"]
 
-        for ai in ais:
+        for ai in self.ais:
             wait.one_second()
             action = ai.act(visible_dealer_hand_score)
             while action == "hit":
@@ -191,12 +141,79 @@ class Game:
             action = self.dealer.act()
         print("The dealer stays.")
 
-    def ask_bet(self):
-        bet = int(input("Place your bet: $"))
-        while bet > self.player.funds:
-            print("You do not have sufficient funds")
-            bet = int(input("Place your bet: $"))
-        return bet
+    def announce_hand(self, who):
+        print(
+            f"{who.name}: {', '.join([str(card_obj) for card_obj in who.hand.hand])}")
+
+    def announce_final_results(self):
+        for winner in self.checker.winners:
+            winner_suffix = suffix.determine(winner.name)
+            print(f"{winner.name} win{winner_suffix} ${winner.bet}")
+            winner.funds += winner.bet
+        for tied in self.checker.ties:
+            tied_suffix = suffix.determine(tied.name)
+            print(
+                f"{tied.name} tie{tied_suffix}. {tied.possessive} bet (${tied.bet}) has been returned")
+        for loser in self.checker.losers:
+            loser_suffix = suffix.determine(loser.name)
+            print(
+                f"The dealer wins, {loser.name} lose{loser_suffix} ${loser.bet}.")
+            loser.funds -= loser.bet
+
+    def round_ends_with_blackjack(self):
+        naturals = self.checker.gets_natural(self.players)
+        if len(naturals) == 0:
+            return False
+
+        for player in self.players:
+            player_suffix = suffix.determine(player.name)
+            if player in naturals and self.dealer.hand.score != 21:
+                print(
+                    f"Blackjack! {player.name} win{player_suffix} ${player.bet + player.bet / 2}")
+                player.funds += player.bet / 2
+            elif player in naturals and self.dealer.hand.score == 21:
+                print(
+                    f"It's a tie. The bet has been returned to {player.name}")
+
+        if len(naturals) == 3:
+            return True
+
+        non_naturals = []
+        for player in self.players:
+            if player not in naturals:
+                non_naturals.append(player)
+        self.checker.round_ends(non_naturals, self.dealer)
+        self.announce_hand(self.dealer)
+        self.announce_final_results()
+        return True
+
+    def round_ends_with_bust(self, who):
+        busted = self.checker.busts(who)
+        if busted is None:
+            return False
+
+        busted_suffix = suffix.determine(busted.name)
+
+        if busted == self.dealer:
+            print("The dealer busts, you all win")
+            for player in self.players:
+                player_suffix = suffix.determine(player.name)
+                print(f"{player.name} win{player_suffix} ${player.bet}.")
+                player.funds += player.bet
+        else:
+            print(
+                f"{busted.possessive} hand value is over 21 and {busted.name} lose{busted_suffix} ${busted.bet}")
+            busted.funds -= busted.bet
+            for player in self.players:
+                if player == busted:
+                    continue
+                print(f"{player.possessive} bet (${player.bet}) has been returned")
+
+        return True
+
+    def round_ends(self):
+        self.checker.round_ends(self.players, self.dealer)
+        self.announce_final_results()
 
     def reset(self):
         for who in self.all:
@@ -204,3 +221,7 @@ class Game:
             who.hand.empty()
         self.checker.empty()
         self.deck.shuffle()
+        self.ais = []
+        self.players = []
+        self.all = []
+        
