@@ -8,10 +8,10 @@ from ai import AI
 
 if __name__ == "__main__":
     deck = Deck()
-    dealer = Dealer(deck)
+    dealer = Dealer()
     player = Player()
     ai1 = AI()
     ai2 = AI()
 
-    game = Game(deck, dealer, player, ai1, ai2)
+    game = Game(dealer, player, ai1, ai2)
     game.play()
