@@ -43,4 +43,4 @@ class AI(Player):
 
     def make_bet(self):
         coefficients = [1, 1/2, 1/3, 1/4, 1/5, 2/3, 3/4, 2/5, 3/5, 4/5]
-        self.bet = self.funds * random.choice(coefficients)
+        self.bet = round(self.funds * random.choice(coefficients), 2)
