@@ -9,7 +9,7 @@ class AI(Player):
         super().__init__()
         AI.instances += 1
         self.name = f"player{str(AI.instances)}"
-        self.bet = 0
+        self.possessive = f"{self.name}'s"
 
     def act(self, dealer_hand):
         has_ace = False
