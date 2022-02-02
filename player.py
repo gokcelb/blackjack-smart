@@ -8,6 +8,3 @@ class Player:
         self.name = "you"
         self.possessive = "your"
         self.bet = 0
-
-    def __str__(self):
-        return f"${self.funds}"

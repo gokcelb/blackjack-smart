@@ -1,6 +1,3 @@
-from cmath import log
-
-
 class Checker:
     def __init__(self):
         self.winners = []
