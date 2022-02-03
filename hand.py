@@ -1,12 +1,12 @@
 class Hand:
     def __init__(self):
-        self.hand = []
+        self.cards = []
         self.score = 0
 
     def calculate_score(self):
         self.score = 0
         aces = []
-        for card in self.hand:
+        for card in self.cards:
             value = card.get_score()
             if type(value) is dict:
                 aces.append(value)
@@ -18,8 +18,8 @@ class Hand:
             self.score += value
 
     def add(self, dealt_card):
-        self.hand.append(dealt_card)
+        self.cards.append(dealt_card)
 
     def empty(self):
-        self.hand = []
+        self.cards = []
         self.score = 0

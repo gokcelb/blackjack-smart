@@ -1,91 +1,101 @@
+from cmath import log
+from turtle import update
 from checker import Checker
 from deck import Deck
-import suffix
+import grammar
 import wait
 
 
 class Game:
-    def __init__(self, dealer, player, ai1, ai2):
+    def __init__(self, dealer, players):
         self.checker = Checker()
         self.deck = Deck()
         self.dealer = dealer
-        self.player = player
-        self.ai1 = ai1
-        self.ai2 = ai2
-        self.ais = []
-        self.players = []
-        self.all = []
+        self.players = players
+        self.curr_idx = 0
+        self.curr_player = self.players[self.curr_idx]
+        self.game_over = False
 
-    def play(self):
-        while self.player.funds > 0:
-            game_starts = input(
-                f"You are starting with ${self.player.funds}. Would you like to play a hand? ")
-            while game_starts != "no" and game_starts != "yes":
-                print("That is not a valid option")
-                game_starts = input(
-                    f"You are starting with ${self.player.funds}. Would you like to play a hand? ")
-            if game_starts.lower() == "no":
-                return
-
-            self.set_players()
-
-            while True:
-                for ai in self.ais:
-                    ai.make_bet()
-                    wait.one_second()
-                    print(f"{ai.name} has betted ${ai.bet}")
-
-                wait.one_second()
-                self.player.bet = self.ask_bet()
-
-                wait.one_second()
-                self.opening()
-
-                if self.round_ends_with_blackjack():
-                    break
-
-                if self.ais_play() == "busted" or self.player_plays() == "busted" or self.dealer_plays() == "busted":
-                    break
-
-                self.round_ends()
-                break
-
+    def start_game(self):
+        while not self.game_over:
+            self.start_round()
             self.reset()
+            self.update_players()
+        print("game over")
 
-        print("You've ran out of money. Please restart this program to try again. Goodbye")
+    def update_players(self):
+        for player in self.players:
+            if player.funds <= 0:
+                self.game_over = True
 
-    def set_players(self):
-        if self.ai1.funds > 0:
-            self.ais.append(self.ai1)
-            print(f"{self.ai1.name} has entered the game")
+    def reset_curr_player(self):
+        self.curr_idx = 0
+        self.curr_player = self.players[self.curr_idx]
 
-        if self.ai2.funds > 0:
-            self.ais.append(self.ai2)
-            print(f"{self.ai2.name} has entered the game")
+    def start_round(self):
+        self.bets()
+        if self.openings() == "blackjack":
+            return self.curr_player
+        
+        self.plays()
 
-        self.players.extend(self.ais)
-        self.players.append(self.player)
-        self.all.extend(self.players)
-        self.all.append(self.dealer)
+        while self.curr_idx < 3:
+            self.curr_player.make_bet()
+            print(f"{self.curr_player.name} betted ${self.curr_player.bet}")
+            self.next()
 
-    def ask_bet(self):
-        bet = int(input("Place your bet: $"))
-        while bet > self.player.funds:
-            print("You do not have sufficient funds")
-            bet = int(input("Place your bet: $"))
-        return bet
+        self.reset_curr_player()
+        while self.curr_idx < 3:
+            self.opening(self.curr_player)
+            self.next()
+        self.opening(self.dealer)
 
-    def opening(self):
-        for who in self.all:
-            self.deal(who)
-            self.deal(who)
-            if who.name == "dealer":
-                print(f"The dealer is dealt: {who.hand.hand[0]}, Unknown")
-            else:
-                print(
-                    f"{who.name}: {', '.join([str(card_obj) for card_obj in who.hand.hand])}")
+        if self.round_ends_with_blackjack():
+            return
+
+        self.reset_curr_player()
+        while self.curr_idx < 3:
+            if self.play(self.curr_player) == "busted":
+                return
+            self.next()
+        if self.play(self.dealer) == "busted":
+            return
+        
+        self.round_ends()
+
+    def play(self, who):
+        if who == self.dealer:
+            self.announce_hand(who)
+            wait.one_second()
+
+        s_suffix = grammar.determine_s(who.name)
+        tobe_suffix = grammar.determine_tobe(who.name)
+        visible_dealer_hand_score = self.dealer.hand.cards[0].get_score()
+        if type(visible_dealer_hand_score) is dict:
+            visible_dealer_hand_score = visible_dealer_hand_score["big"]
+
+        action = who.act() if who == self.dealer else who.act(visible_dealer_hand_score)
+        while action == "hit":
+            print(f"{who.name} hit{s_suffix} and {tobe_suffix} dealt: {self.deal(who)}")
+            self.announce_hand(who)
             who.hand.calculate_score()
-            wait.two_seconds()
+            if self.round_ends_with_bust(who):
+                return "busted"
+            wait.one_second()
+            action = who.act() if who == self.dealer else who.act(visible_dealer_hand_score)
+        print(f"{who.name} stay{s_suffix}")
+
+    def opening(self, who):
+        self.deal(who)
+        self.deal(who)
+        if who.name == "dealer":
+            print(
+                f"The dealer is dealt: {who.hand.cards[0]}, Unknown")
+        else:
+            print(
+                f"{who.name}: {', '.join([str(card_obj) for card_obj in who.hand.cards])}")
+        who.hand.calculate_score()
+        wait.two_seconds()
 
     def deal(self, who):
         if len(self.deck.cards) == 0:
@@ -94,70 +104,28 @@ class Game:
         who.hand.add(dealt_card)
         return dealt_card
 
-    def ais_play(self):
-        visible_dealer_hand_score = self.dealer.hand.hand[0].get_score()
-        if type(visible_dealer_hand_score) is dict:
-            visible_dealer_hand_score = visible_dealer_hand_score["big"]
-
-        for ai in self.ais:
-            wait.one_second()
-            action = ai.act(visible_dealer_hand_score)
-            while action == "hit":
-                print(f"{ai.name} hits and is dealt: {self.deal(ai)}")
-                self.announce_hand(ai)
-                ai.hand.calculate_score()
-                if self.round_ends_with_bust(ai):
-                    return "busted"
-                wait.one_second()
-                action = ai.act(visible_dealer_hand_score)
-            print(f"{ai.name} stays.")
-
-    def player_plays(self):
-        action = input("Would you like to hit or stay? ")
-        while action.lower() != "hit" and action.lower() != "stay":
-            print("That is not a valid option.")
-            action = input("Would you like to hit or stay? ")
-
-        while action.lower() == "hit":
-            self.deal(self.player)
-            self.announce_hand(self.player)
-            self.player.hand.calculate_score()
-            if self.round_ends_with_bust(self.player):
-                return "busted"
-            wait.one_second()
-            action = input("Would you like to hit or stay? ")
-
-    def dealer_plays(self):
-        self.announce_hand(self.dealer)
-        wait.one_second()
-        action = self.dealer.act()
-        while action == "hit":
-            print(f"The dealer hits and is dealt: {self.deal(self.dealer)}")
-            self.announce_hand(self.dealer)
-            self.dealer.hand.calculate_score()
-            if self.round_ends_with_bust(self.dealer):
-                return "busted"
-            wait.one_second()
-            action = self.dealer.act()
-        print("The dealer stays.")
+    def next(self):
+        self.curr_idx += 1
+        if self.curr_idx > 2: return
+        self.curr_player = self.players[self.curr_idx]
 
     def announce_hand(self, who):
         print(
-            f"{who.name}: {', '.join([str(card_obj) for card_obj in who.hand.hand])}")
+            f"{who.name}: {', '.join([str(card_obj) for card_obj in who.hand.cards])}")
 
     def announce_final_results(self):
         for winner in self.checker.winners:
-            winner_suffix = suffix.determine(winner.name)
-            print(f"{winner.name} win{winner_suffix} ${winner.bet}")
+            winner_s_suffix = grammar.determine_s(winner.name)
+            print(f"{winner.name} win{winner_s_suffix} ${winner.bet}")
             winner.funds += winner.bet
         for tied in self.checker.ties:
-            tied_suffix = suffix.determine(tied.name)
+            tied_s_suffix = grammar.determine_s(tied.name)
             print(
-                f"{tied.name} tie{tied_suffix}. {tied.possessive} bet (${tied.bet}) has been returned")
+                f"{tied.name} tie{tied_s_suffix}. {tied.possessive} bet (${tied.bet}) has been returned")
         for loser in self.checker.losers:
-            loser_suffix = suffix.determine(loser.name)
+            loser_s_suffix = grammar.determine_s(loser.name)
             print(
-                f"The dealer wins, {loser.name} lose{loser_suffix} ${loser.bet}.")
+                f"The dealer wins, {loser.name} lose{loser_s_suffix} ${loser.bet}.")
             loser.funds -= loser.bet
 
     def round_ends_with_blackjack(self):
@@ -165,11 +133,12 @@ class Game:
         if len(naturals) == 0:
             return False
 
+        self.announce_hand(self.dealer)
         for player in self.players:
-            player_suffix = suffix.determine(player.name)
+            player_s_suffix = grammar.determine_s(player.name)
             if player in naturals and self.dealer.hand.score != 21:
                 print(
-                    f"Blackjack! {player.name} win{player_suffix} ${player.bet + player.bet / 2}")
+                    f"Blackjack! {player.name} win{player_s_suffix} ${player.bet + player.bet / 2}")
                 player.funds += player.bet / 2
             elif player in naturals and self.dealer.hand.score == 21:
                 print(
@@ -183,7 +152,6 @@ class Game:
             if player not in naturals:
                 non_naturals.append(player)
         self.checker.round_ends(non_naturals, self.dealer)
-        self.announce_hand(self.dealer)
         self.announce_final_results()
         return True
 
@@ -192,23 +160,21 @@ class Game:
         if busted is None:
             return False
 
-        busted_suffix = suffix.determine(busted.name)
-
+        busted_s_suffix = grammar.determine_s(busted.name)
         if busted == self.dealer:
             print("The dealer busts, you all win")
             for player in self.players:
-                player_suffix = suffix.determine(player.name)
-                print(f"{player.name} win{player_suffix} ${player.bet}.")
+                player_s_suffix = grammar.determine_s(player.name)
+                print(f"{player.name} win{player_s_suffix} ${player.bet}.")
                 player.funds += player.bet
         else:
             print(
-                f"{busted.possessive} hand value is over 21 and {busted.name} lose{busted_suffix} ${busted.bet}")
+                f"{busted.possessive} hand value is over 21 and {busted.name} lose{busted_s_suffix} ${busted.bet}")
             busted.funds -= busted.bet
             for player in self.players:
                 if player == busted:
                     continue
                 print(f"{player.possessive} bet (${player.bet}) has been returned")
-
         return True
 
     def round_ends(self):
@@ -216,12 +182,11 @@ class Game:
         self.announce_final_results()
 
     def reset(self):
-        for who in self.all:
-            self.deck.cards.extend(who.hand.hand)
-            who.hand.empty()
+        for player in self.players:
+            self.deck.cards.extend(player.hand.cards)
+            player.hand.empty()
+        self.deck.cards.extend(self.dealer.hand.cards)
+        self.dealer.hand.empty()
+        self.reset_curr_player()
         self.checker.empty()
         self.deck.shuffle()
-        self.ais = []
-        self.players = []
-        self.all = []
-        

@@ -1,17 +1,17 @@
 from deck import Deck
 from dealer import Dealer
-from player import Player
+from human_player import HumanPlayer
 from game import Game
-from card import Card
-from ai import AI
+from ai_player import AIPlayer
 
 
 if __name__ == "__main__":
     deck = Deck()
     dealer = Dealer()
-    player = Player()
-    ai1 = AI()
-    ai2 = AI()
+    human = HumanPlayer()
+    ai1 = AIPlayer()
+    ai2 = AIPlayer()
+    players = [ai1, ai2, human]
 
-    game = Game(dealer, player, ai1, ai2)
-    game.play()
+    game = Game(dealer, players)
+    game.start_game()
